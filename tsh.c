@@ -154,7 +154,8 @@ int main(int argc, char **argv) {
  * <What does eval do?>
  */
 void eval(const char *cmdline) {
-    parseline_return parse_result;
+    sigset_t newMask,oldMask;
+	parseline_return parse_result;
     struct cmdline_tokens token;
 	int output_file_flag,input_file_flag;
     // Parse command line
@@ -194,7 +195,42 @@ void eval(const char *cmdline) {
 		runJob_foregrnd(token);
 		return;
 	}
-    return;
+    sigemptyset(&newMask);
+	sigemptyset(&oldMask);
+	sigaddset(&newMask,SIGCHLD);
+	sigaddset(&newMask,SIGTSTP);
+	sigaddset(&newMask,SIGINT);
+	Sigprocmask(SIG_BLOCK,&newMask,NULL);
+
+	pid_t newP=fork();
+	if(newP<0)
+		unix_error("Unable to fork");
+	if(newP==0)
+	{
+		setpgid(0,0);
+		Sigprocmak(SIG_UNBLOCK,&newMask,NULL);
+		if(output_file_flag>0)
+			Dup2(output_file_flag,1);
+		if(input_file_flag>0)
+			Dup2(input_file_flag,0);
+		if(execve(token.argv[0],argv,environ)<0){
+			printf("Command not found");
+			exit(0);
+		}
+	}
+	if(parse_result==PARSELINE_FG)
+		add_job(newP,PARSELINE_FG,cmdline);
+	else add_job(newP,PARSELINE_BG,cmdline);
+	Sigprocmask(SIG_UNBLOCK,&newMask,NULL);
+	struct job_t *newJob=find_job_with_pid(newP);
+	if(parse_result==PARSELINE_FG)
+	{
+		sigemptyset(&oldMask);
+		while(fg_pid()!=0 && newJob->state==FG)
+			sigsuspend(&oldMask);		
+	}
+	else	printf("[%d] (%d) %s\n",newJob->jid,newJob->pid,cmdline);
+	return;
 }
 
 /*****************
@@ -319,7 +355,7 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 	{
 		for(i=1;i<strlen(token.argv[1]);i++)//start from index 1 to ignore % sign
 		{
-			if(!isDigit(token.argv[1][i]))
+			if(!isdigit(token.argv[1][i]))
 			{
 				printf("All digits of Job id and Pid must be numeric");
 				return;
@@ -387,7 +423,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 	{
 		for(i=1;i<strlen(token.argv[1]);i++)//start from index 1 to ignore % sign
 		{
-			if(!isDigit(token.argv[1][i]))
+			if(!isdigit(token.argv[1][i]))
 			{
 				printf("All digits of Job id and Pid must be numeric");
 				return;
@@ -432,7 +468,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 		}
 		related_job->state=FG;
 		sigemptyset(&mask);
-		while(fg_pid!=0 && related_job->state==FG)
+		while(fg_pid()!=0 && related_job->state==FG)
 			sigsuspend(&mask);
 	}
 	return;
