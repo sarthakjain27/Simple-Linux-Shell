@@ -225,10 +225,10 @@ void eval(const char *cmdline) {
 	if(parse_result==PARSELINE_FG)
 	{
 		sigemptyset(&oldMask);
-		while(fg_pid()!=0 && newJob->state==FG)
+		while(fg_pid()!=0 && get_state_of_job(newJob)==FG)
 			sigsuspend(&oldMask);		
 	}
-	else	printf("[%d] (%d) %s\n",newJob->jid,newJob->pid,cmdline);
+	else	printf("[%d] (%d) %s\n",get_jid_of_job(newJob),get_pid_of_job(newJob),cmdline);
 	return;
 }
 
@@ -366,12 +366,12 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 			printf("No job with this JOB id \n");
 			return;
 		}
-		if(kill(-(related_job->pid),SIGCONT)<0){
+		if(kill(-(get_pid_of_job(related_job)),SIGCONT)<0){
 			printf("Unable to start the given job in bg \n");
 			return;
 		}
-		printf("[%d] (%d) %s\n",related_job->jid,related_job->pid,related_job->cmdline);
-		related_job->state=BG;
+		printf("[%d] (%d) %s\n",get_jid_of_job(related_job),get_pid_of_job(related_job),get_cmdline_of_job(related_job));
+		set_state_of_job(related_job,BG);
 	}
 	else//given is the PID so start checking argv[1] from 0
 	{
@@ -390,12 +390,12 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 			printf("No job with this  Pid \n");
 			return;
 		}
-		if(kill(-(related_job->pid),SIGCONT)<0){
+		if(kill(-(get_pid_of_job(related_job)),SIGCONT)<0){
 			printf("Unable to start the given job in bg \n");
 			return;
 		}
-		printf("[%d] (%d) %s\n",related_job->jid,related_job->pid,related_job->cmdline);
-		related_job->state=BG;	
+		printf("[%d] (%d) %s\n",get_jid_of_job(related_job),get_pid_of_job(related_job),get_cmdline_of_job(related_job));
+		set_state_of_job(related_job,BG);	
 	}
 	return;
 }
@@ -434,13 +434,13 @@ void runJob_foregrnd(struct cmdline_tokens token)
 			printf("No job with this JOB id \n");
 			return;
 		}
-		if(kill(-(related_job->pid),SIGCONT)<0){
+		if(kill(-(get_pid_of_job(related_job)),SIGCONT)<0){
 			printf("Unable to start the given job in fg \n");
 			return;
 		}
-		related_job->state=FG;
+		set_state_of_job(related_job,FG);
 		sigemptyset(&mask);
-		while(fg_pid()!=0 && related_job->state==FG)
+		while(fg_pid()!=0 && get_state_of_job(related_job)==FG)
 			sigsuspend(&mask);
 	}
 	else//given is the PID so start checking argv[1] from 0
@@ -460,13 +460,13 @@ void runJob_foregrnd(struct cmdline_tokens token)
 			printf("No job with this PID id \n");
 			return;
 		}
-		if(kill(-(related_job->pid),SIGCONT)<0){
+		if(kill(-(get_pid_of_job(related_job)),SIGCONT)<0){
 			printf("Unable to start the given job in fg \n");
 			return;
 		}
-		related_job->state=FG;
+		set_state_of_job(related_job,FG);
 		sigemptyset(&mask);
-		while(fg_pid()!=0 && related_job->state==FG)
+		while(fg_pid()!=0 && get_state_of_job(related_job)==FG)
 			sigsuspend(&mask);
 	}
 	return;
