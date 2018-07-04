@@ -50,7 +50,6 @@ void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
 void sigint_handler(int sig);
 void sigquit_handler(int sig);
-void bckgrnd_jobs(int output_file_reader);
 void runJob_bckgrnd(struct cmdline_tokens token);
 void runJob_foregrnd(struct cmdline_tokens token);
 
@@ -177,11 +176,11 @@ void eval(const char *cmdline) {
 				return;
 			}
 			else
-				bckgrnd_jobs(output_file_flag);
+				list_jobs(output_file_flag);
 			close(output_file_flag);
 		}
 		else
-			bckgrnd_jobs(1);		
+			list_jobs(1);		
 		return;
 	}
 	if(token.builtin==BUILTIN_BG)
@@ -299,39 +298,6 @@ void sigtstp_handler(int sig) {
 }
 
 
-/*
- * This functions helps to list out all bg jobs. Taking help from list_job function in tshhelper.c to remove fg jobs in it.
- * Calling this function to handle builtin command jobs.
- */
-void bckgrnd_jobs(int output_file_reader)
-{
-	int i;
-	char buf[MAXLINE_TSH];
-	for(i=0;i<MAXJOBS;i++)
-	{
-		memset(buf,'\0',MAXLINE_TSH);
-		if(job_list[i].pid!=0)
-		{
-			if(job_list[i].state==BG)
-			{
-				sprintf(buf,"[%d] (%d) Running %s\n",job_list[i].jid,job_list[i].pid,job_list[i].cmdline);
-				if(write(output_file_reader,buf,strlen(buf))<0){
-					fprintf(stderr,"Error writing to output file\n");
-					exit(EXIT_FAILURE);
-				}
-			}
-			else if(job_list[i].state==ST)
-			{
-				sprintf(buf,"[%d] (%d) Running %s\n",job_list[i].jid,job_list[i].pid,job_list[i].cmdline);
-				if(write(output_file_reader,buf,strlen(buf))<0){
-					fprintf(stderr,"Error writing to output file\n");
-					exit(EXIT_FAILURE);
-				}
-			}
-		}
-	}
-	return;
-}
 
 /*This function is for built in bg commang. It runs the appropriate process in bg
  * by sending a SIGCONT signal. 
