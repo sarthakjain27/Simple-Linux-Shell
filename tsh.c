@@ -198,15 +198,14 @@ void eval(const char *cmdline) {
 	sigaddset(&newMask,SIGCHLD);
 	sigaddset(&newMask,SIGTSTP);
 	sigaddset(&newMask,SIGINT);
-	Sigprocmask(SIG_BLOCK,&newMask,NULL);
-
+	sigprocmask(SIG_BLOCK,&newMask,NULL);
 	pid_t newP=fork();
 	if(newP<0)
 		unix_error("Unable to fork");
 	if(newP==0)
 	{
 		setpgid(0,0);
-		Sigprocmask(SIG_UNBLOCK,&newMask,NULL);
+		sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 		if(output_file_flag>0)
 			Dup2(output_file_flag,1);
 		if(input_file_flag>0)
@@ -215,19 +214,21 @@ void eval(const char *cmdline) {
 			printf("Command not found");
 			exit(0);
 		}
+		exit(0);
 	}
 	if(parse_result==PARSELINE_FG)
 		add_job(newP,PARSELINE_FG,cmdline);
 	else add_job(newP,PARSELINE_BG,cmdline);
-	Sigprocmask(SIG_UNBLOCK,&newMask,NULL);
+	//sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 	struct job_t *newJob=find_job_with_pid(newP);
 	if(parse_result==PARSELINE_FG)
 	{
-		sigemptyset(&oldMask);
+		//sigemptyset(&oldMask);
 		while(fg_pid()!=0 && get_state_of_job(newJob)==FG)
 			sigsuspend(&oldMask);		
 	}
 	else	printf("[%d] (%d) %s\n",get_jid_of_job(newJob),get_pid_of_job(newJob),cmdline);
+	sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 	return;
 }
 
