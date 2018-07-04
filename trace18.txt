@@ -17,9 +17,9 @@ NEXT
 jobs
 NEXT
 
-/bin/echo -e tsh\076 PID mytstp fg
+/bin/echo -e tsh\076 PID mytstps fg
 NEXT
-PID mytstp fg
+PID mytstps fg
 NEXT
 
 SIGNAL # restart myspin

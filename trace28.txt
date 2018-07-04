@@ -16,7 +16,7 @@ SHELLSIGNAL
 
 NEXT
 
-/bin/echo -e tsh\0746 ./myspin1
+/bin/echo -e tsh\076 ./myspin1
 NEXT
 ./myspin1
 
