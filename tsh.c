@@ -65,7 +65,6 @@ int main(int argc, char **argv) {
     char c;
     char cmdline[MAXLINE_TSH];  // Cmdline for fgets
     bool emit_prompt = true;    // Emit prompt (default)
-
     // Redirect stderr to stdout (so that driver will get all output
     // on the pipe connected to stdout)
     Dup2(STDOUT_FILENO, STDERR_FILENO);
@@ -208,12 +207,12 @@ void eval(const char *cmdline) {
 	if(newP==0)
 	{
 		setpgid(0,0);
-		Sigprocmak(SIG_UNBLOCK,&newMask,NULL);
+		Sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 		if(output_file_flag>0)
 			Dup2(output_file_flag,1);
 		if(input_file_flag>0)
 			Dup2(input_file_flag,0);
-		if(execve(token.argv[0],argv,environ)<0){
+		if(execve(token.argv[0],token.argv,environ)<0){
 			printf("Command not found");
 			exit(0);
 		}
@@ -267,7 +266,7 @@ void sigchld_handler(int sig) {
 		else if(WIFSTOPPED(status))
 		{
 			printf("Job [%d] (%d) stopped by signal %d \n",term_child_jid,term_child_pid,WSTOPSIG(status));
-			set_state_of_job(find_job_with_pid,ST);
+			set_state_of_job(find_job_with_pid(term_child_pid),ST);
 		}
 	}
     return;
@@ -306,7 +305,6 @@ void sigtstp_handler(int sig) {
  */
 void bckgrnd_jobs(int output_file_reader)
 {
-	check_blocked();
 	int i;
 	char buf[MAXLINE_TSH];
 	for(i=0;i<MAXJOBS;i++)
@@ -379,7 +377,7 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 	{
 		for(i=0;i<strlen(token.argv[1]);i++)
 		{
-			if(!isDigit(token.argv[1][i]))
+			if(!isdigit(token.argv[1][i]))
 			{
 				printf("All digits of Job id and Pid must be numeric");
 				return;
@@ -449,7 +447,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 	{
 		for(i=0;i<strlen(token.argv[1]);i++)
 		{
-			if(!isDigit(token.argv[1][i]))
+			if(!isdigit(token.argv[1][i]))
 			{
 				printf("All digits of Job id and Pid must be numeric");
 				return;
