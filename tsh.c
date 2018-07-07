@@ -176,8 +176,8 @@ void eval(const char *cmdline) {
     }
 	if(token.builtin==BUILTIN_QUIT)
 		exit(0);
-	output_file_flag=open(token.outfile,O_WRONLY|O_CREAT);
-	input_file_flag=open(token.infile,O_RDONLY|O_CREAT);	
+	output_file_flag=open(token.outfile,O_WRONLY|O_CREAT,0x777);
+	input_file_flag=open(token.infile,O_RDONLY|O_CREAT,0x777);
 	if(token.infile!=NULL && input_file_flag<0)
 		unix_error("Error in opening input file\n");
 	if(token.builtin==BUILTIN_JOBS)
@@ -218,13 +218,17 @@ void eval(const char *cmdline) {
 			unix_error("Error in changing process group of child\n");
 		if(output_file_flag>0)
 		{
-			Dup2(output_file_flag,1);
-			close(output_file_flag);
+			if((dup2(output_file_flag,STDOUT_FILENO))!=-1)
+				close(output_file_flag);
+			else
+				unix_error("Error in dup2 of outfile\n");
 		}
 		if(input_file_flag>0)
 		{
-			Dup2(input_file_flag,0);
-			close(input_file_flag);
+			if((dup2(input_file_flag,STDIN_FILENO))!=-1)
+				close(input_file_flag);
+			else
+				unix_error("Error in dup2 of infile\n");
 		}
 		if(execve(token.argv[0],token.argv,environ)<0){
 			unix_error("Command not found");
