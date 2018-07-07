@@ -156,23 +156,37 @@ void eval(const char *cmdline) {
 	parseline_return parse_result;
     struct cmdline_tokens token;
 	int output_file_flag,input_file_flag;
-    // Parse command line
+    if(sigemptyset(&newMask)!=0)
+		unix_error("Error in sigemmptyset\n");
+	if(sigemptyset(&oldMask)!=0)
+		unix_error("Error in sigemptyset of oldMask\n");
+	if(sigaddset(&newMask,SIGCHLD)!=0)
+		unix_error("Error in sigaddset of SIGCHLD\n");
+	if(sigaddset(&newMask,SIGINT)!=0)
+		unix_error("Error in sigaddset of SIGTSTP\n");
+	if(sigaddset(&newMask,SIGTSTP)!=0)
+		unix_error("Error in sigaddset of SIGINT\n");
+	if(sigprocmask(SIG_BLOCK,&newMask,&oldMask)!=0)
+		unix_error("Error in sigprocmask \n");
+    
+	// Parse command line
     parse_result = parseline(cmdline, &token);
-
     if (parse_result == PARSELINE_ERROR || parse_result == PARSELINE_EMPTY) {
         return;
     }
 	if(token.builtin==BUILTIN_QUIT)
 		exit(0);
 	output_file_flag=open(token.outfile,O_WRONLY|O_CREAT);
-	input_file_flag=open(token.outfile,O_RDONLY|O_CREAT);	
+	input_file_flag=open(token.infile,O_RDONLY|O_CREAT);	
+	if(token.infile!=NULL && input_file_flag<0)
+		unix_error("Error in opening input file\n");
 	if(token.builtin==BUILTIN_JOBS)
 	{
 		if(token.outfile!=NULL)
 		{
 			if(output_file_flag<0)
 			{
-				printf("Error in opening file");
+				unix_error("Error in opening file");
 				return;
 			}
 			else
@@ -193,42 +207,49 @@ void eval(const char *cmdline) {
 		runJob_foregrnd(token);
 		return;
 	}
-    sigemptyset(&newMask);
-	sigemptyset(&oldMask);
-	sigaddset(&newMask,SIGCHLD);
-	sigaddset(&newMask,SIGTSTP);
-	sigaddset(&newMask,SIGINT);
-	sigprocmask(SIG_BLOCK,&newMask,NULL);
 	pid_t newP=fork();
 	if(newP<0)
 		unix_error("Unable to fork");
 	if(newP==0)
 	{
-		setpgid(0,0);
-		sigprocmask(SIG_UNBLOCK,&newMask,NULL);
+		if(sigprocmask(SIG_UNBLOCK,&newMask,NULL)!=0)
+			unix_error("Error in sig_setmask of child\n");	
+		if(setpgid(0,0)!=0)
+			unix_error("Error in changing process group of child\n");
 		if(output_file_flag>0)
+		{
 			Dup2(output_file_flag,1);
-		if(input_file_flag>0)
-			Dup2(input_file_flag,0);
-		if(execve(token.argv[0],token.argv,environ)<0){
-			printf("Command not found");
-			exit(0);
+			close(output_file_flag);
 		}
-		exit(0);
+		if(input_file_flag>0)
+		{
+			Dup2(input_file_flag,0);
+			close(input_file_flag);
+		}
+		if(execve(token.argv[0],token.argv,environ)<0){
+			unix_error("Command not found");
+		}
 	}
 	if(parse_result==PARSELINE_FG)
-		add_job(newP,PARSELINE_FG,cmdline);
-	else add_job(newP,PARSELINE_BG,cmdline);
+	{
+		if(!(add_job(newP,PARSELINE_FG,cmdline)))
+			unix_error("Error in adding new job\n");
+	}
+	else 
+	{
+		if(!(add_job(newP,PARSELINE_BG,cmdline)))
+			unix_error("Error in adding new job\n");
+	}
 	//sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 	struct job_t *newJob=find_job_with_pid(newP);
 	if(parse_result==PARSELINE_FG)
 	{
-		//sigemptyset(&oldMask);
+		sigemptyset(&oldMask);
 		while(fg_pid()!=0 && get_state_of_job(newJob)==FG)
 			sigsuspend(&oldMask);		
 	}
 	else	printf("[%d] (%d) %s\n",get_jid_of_job(newJob),get_pid_of_job(newJob),cmdline);
-	sigprocmask(SIG_UNBLOCK,&newMask,NULL);
+	sigprocmask(SIG_SETMASK,&oldMask,NULL);
 	return;
 }
 
