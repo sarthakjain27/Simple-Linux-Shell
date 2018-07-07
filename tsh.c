@@ -366,7 +366,7 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 				return;
 			}
 		}
-		jobid=atoi(token.argv[1]+sizeof(char));
+		jobid=atoi(token.argv[1]);
 		related_job=find_job_with_jid(jobid);
 		if(related_job==NULL)
 		{
@@ -434,7 +434,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 				return;
 			}
 		}
-		jobid=atoi(token.argv[1]+sizeof(char));
+		jobid=atoi(token.argv[1]);
 		related_job=find_job_with_jid(jobid);
 		if(related_job==NULL)
 		{
@@ -460,7 +460,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 				return;
 			}
 		}
-		pid=atoi(token.argv[1]+sizeof(char));
+		pid=atoi(token.argv[1]);
 		related_job=find_job_with_pid(pid);
 		if(related_job==NULL)
 		{
