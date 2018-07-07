@@ -166,8 +166,6 @@ void eval(const char *cmdline) {
 		unix_error("Error in sigaddset of SIGTSTP\n");
 	if(sigaddset(&newMask,SIGTSTP)!=0)
 		unix_error("Error in sigaddset of SIGINT\n");
-	if(sigfillset(&newMask)!=0)
-		unix_error("Error in sigfillset\n");
 	if(sigprocmask(SIG_BLOCK,&newMask,&oldMask)!=0)
 		unix_error("Error in sigprocmask \n");
     
@@ -233,23 +231,23 @@ void eval(const char *cmdline) {
 		}
 		exit(0);
 	}
+	
 	if(parse_result==PARSELINE_FG)
 	{
-		if(!(add_job(newP,PARSELINE_FG,cmdline)))
+		if(!(add_job(newP,FG,cmdline)))
 			unix_error("Error in adding new job\n");
 	}
 	else 
 	{
-		if(!(add_job(newP,PARSELINE_BG,cmdline)))
+		if(!(add_job(newP,BG,cmdline)))
 			unix_error("Error in adding new job\n");
 	}
-	//sigprocmask(SIG_UNBLOCK,&newMask,NULL);
 	struct job_t *newJob=find_job_with_pid(newP);
 	if(parse_result==PARSELINE_FG)
 	{
-		//sigemptyset(&oldMask);
+		sigemptyset(&oldMask);
 		while(fg_pid()!=0 && get_state_of_job(newJob)==FG)
-			sigsuspend(&newMask);		
+			sigsuspend(&oldMask);		
 	}
 	else	printf("[%d] (%d) %s\n",get_jid_of_job(newJob),get_pid_of_job(newJob),cmdline);
 	sigprocmask(SIG_SETMASK,&oldMask,NULL);
