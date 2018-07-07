@@ -314,10 +314,11 @@ void sigint_handler(int sig) {
 	sigfillset(&oldMask);
 	sigprocmask(SIG_BLOCK,&oldMask,&prevMask);
 	pid_t pid_job_fg=fg_pid();
-	if(pid_job_fg==0)
+	if(pid_job_fg<=0)
 		return;
 	if((kill(-pid_job_fg,sig))<0)
-		printf("No job running in foregroung \n");
+		return;
+		//unix_error("No job running in foregroung \n");
 	sigprocmask(SIG_SETMASK,&prevMask,NULL);
 	errno=olderrno;
 	return;
@@ -333,10 +334,11 @@ void sigtstp_handler(int sig) {
 	sigfillset(&oldMask);
 	sigprocmask(SIG_BLOCK,&oldMask,&prevMask);
 	pid_t pid_job_fg=fg_pid();
-	if(pid_job_fg==0)
+	if(pid_job_fg<=0)
 		return;
 	if((kill(-pid_job_fg,sig))<0)
-		printf("No job runnign in foreground \n");
+		return;
+		//unix_error("No job runnign in foreground \n");
 	sigprocmask(SIG_SETMASK,&prevMask,NULL);
 	errno=olderr;
 	return;
