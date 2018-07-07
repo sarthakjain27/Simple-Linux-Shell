@@ -247,9 +247,9 @@ void eval(const char *cmdline) {
 	struct job_t *newJob=find_job_with_pid(newP);
 	if(parse_result==PARSELINE_FG)
 	{
-		sigemptyset(&oldMask);
+		//sigemptyset(&oldMask);
 		while(fg_pid()!=0 && get_state_of_job(newJob)==FG)
-			sigsuspend(&oldMask);		
+			sigsuspend(&newMask);		
 	}
 	else	printf("[%d] (%d) %s\n",get_jid_of_job(newJob),get_pid_of_job(newJob),cmdline);
 	sigprocmask(SIG_SETMASK,&oldMask,NULL);
@@ -270,10 +270,14 @@ void eval(const char *cmdline) {
  * currently running children to terminate.
  * */
 void sigchld_handler(int sig) {
+	int olderrno=errno;
 	pid_t term_child_pid;
 	int term_child_jid=0,status=0;
+	sigset_t mask,prev_mask;
+	sigfillset(&mask);
 	while((term_child_pid=waitpid(-1,&status,WNOHANG|WUNTRACED))>0)
 	{
+		sigprocmask(SIG_BLOCK,&mask,&prev_mask);	
 		term_child_jid=find_jid_by_pid(term_child_pid);
 		//Case 1: If child terminated normally by itself
 		if(WIFEXITED(status))
@@ -292,7 +296,14 @@ void sigchld_handler(int sig) {
 			printf("Job [%d] (%d) stopped by signal %d \n",term_child_jid,term_child_pid,WSTOPSIG(status));
 			set_state_of_job(find_job_with_pid(term_child_pid),ST);
 		}
+		sigprocmask(SIG_SETMASK,&prev_mask,NULL);
 	}
+	if(errno!=ECHILD)
+	{
+		if(write(1,"waitpid error\n",14)<0)
+			unix_error("write error");
+	}
+	errno=olderrno;
     return;
 }
 
@@ -301,11 +312,17 @@ void sigchld_handler(int sig) {
  * We need to catch that signal and handle it so that it only terminates the foreground running job.
  */
 void sigint_handler(int sig) {
+	int olderrno=errno;
+	sigset_t oldMask,prevMask;
+	sigfillset(&oldMask);
+	sigprocmask(SIG_BLOCK,&oldMask,&prevMask);
 	pid_t pid_job_fg=fg_pid();
 	if(pid_job_fg==0)
 		return;
 	if((kill(-pid_job_fg,sig))<0)
 		printf("No job running in foregroung \n");
+	sigprocmask(SIG_SETMASK,&prevMask,NULL);
+	errno=olderrno;
 	return;
 }
 
@@ -314,11 +331,17 @@ void sigint_handler(int sig) {
  * We need to catch theat signal and handle it so that it only suspends the foreground running job.
  */
 void sigtstp_handler(int sig) {
+	int olderr=errno;
+	sigset_t oldMask,prevMask;
+	sigfillset(&oldMask);
+	sigprocmask(SIG_BLOCK,&oldMask,&prevMask);
 	pid_t pid_job_fg=fg_pid();
 	if(pid_job_fg==0)
 		return;
 	if((kill(-pid_job_fg,sig))<0)
 		printf("No job runnign in foreground \n");
+	sigprocmask(SIG_SETMASK,&prevMask,NULL);
+	errno=olderr;
 	return;
 }
 
