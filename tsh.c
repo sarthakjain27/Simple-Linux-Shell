@@ -166,6 +166,8 @@ void eval(const char *cmdline) {
 		unix_error("Error in sigaddset of SIGTSTP\n");
 	if(sigaddset(&newMask,SIGTSTP)!=0)
 		unix_error("Error in sigaddset of SIGINT\n");
+	if(sigfillset(&newMask)!=0)
+		unix_error("Error in sigfillset\n");
 	if(sigprocmask(SIG_BLOCK,&newMask,&oldMask)!=0)
 		unix_error("Error in sigprocmask \n");
     
@@ -229,6 +231,7 @@ void eval(const char *cmdline) {
 		if(execve(token.argv[0],token.argv,environ)<0){
 			unix_error("Command not found");
 		}
+		exit(0);
 	}
 	if(parse_result==PARSELINE_FG)
 	{
