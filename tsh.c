@@ -296,11 +296,6 @@ void sigchld_handler(int sig) {
 		}
 		sigprocmask(SIG_SETMASK,&prev_mask,NULL);
 	}
-	if(errno!=ECHILD)
-	{
-		if(write(1,"waitpid error\n",14)<0)
-			unix_error("write error");
-	}
 	errno=olderrno;
     return;
 }
