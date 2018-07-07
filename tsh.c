@@ -174,12 +174,19 @@ void eval(const char *cmdline) {
     if (parse_result == PARSELINE_ERROR || parse_result == PARSELINE_EMPTY) {
         return;
     }
+	
+	//checking for builtin quit command as input command
 	if(token.builtin==BUILTIN_QUIT)
 		exit(0);
+	
 	output_file_flag=open(token.outfile,O_WRONLY|O_CREAT,0x777);
 	input_file_flag=open(token.infile,O_RDONLY|O_CREAT,0x777);
+	
 	if(token.infile!=NULL && input_file_flag<0)
 		unix_error("Error in opening input file\n");
+	
+	//checking for builtin jobs command as input command along with if we have redirection file give or not
+	//by default output to stdout
 	if(token.builtin==BUILTIN_JOBS)
 	{
 		if(token.outfile!=NULL)
@@ -197,16 +204,24 @@ void eval(const char *cmdline) {
 			list_jobs(1);		
 		return;
 	}
+	
+	//checking for builtin bg job command
 	if(token.builtin==BUILTIN_BG)
 	{
 		runJob_bckgrnd(token);	
 		return;
 	}
+	
+	//checking for builtin fg job command
 	if(token.builtin==BUILTIN_FG)
 	{
 		runJob_foregrnd(token);
 		return;
 	}
+
+	//from here consider every command to be an executable path.
+	//Fork a child. And if & then run the command in background.
+	//Otherwise suspend parent to wait for child to complete and to be notified by SIGCHLD signal.
 	pid_t newP=fork();
 	if(newP<0)
 		unix_error("Unable to fork");
@@ -214,8 +229,12 @@ void eval(const char *cmdline) {
 	{
 		if(sigprocmask(SIG_UNBLOCK,&newMask,NULL)!=0)
 			unix_error("Error in sig_setmask of child\n");	
+		
+		//change process group according to hint given. To avoid SIGINT to be sent to every proess created.
 		if(setpgid(0,0)!=0)
 			unix_error("Error in changing process group of child\n");
+		
+		//if output file given, make stdout a copy of output file. So that every write to stdout goes to the file descriptor
 		if(output_file_flag>0)
 		{
 			if((dup2(output_file_flag,STDOUT_FILENO))!=-1)
@@ -223,6 +242,8 @@ void eval(const char *cmdline) {
 			else
 				unix_error("Error in dup2 of outfile\n");
 		}
+
+		//if input file given, make stding a copy of input file. So that every input from stdin gets content from provided input file
 		if(input_file_flag>0)
 		{
 			if((dup2(input_file_flag,STDIN_FILENO))!=-1)
@@ -236,16 +257,19 @@ void eval(const char *cmdline) {
 		exit(0);
 	}
 	
+	//adding the newly created job with appropriate state
 	if(parse_result==PARSELINE_FG)
 	{
 		if(!(add_job(newP,FG,cmdline)))
 			unix_error("Error in adding new job\n");
 	}
+	
 	else 
 	{
 		if(!(add_job(newP,BG,cmdline)))
 			unix_error("Error in adding new job\n");
 	}
+	
 	struct job_t *newJob=find_job_with_pid(newP);
 	if(parse_result==PARSELINE_FG)
 	{
@@ -372,7 +396,7 @@ void runJob_bckgrnd(struct cmdline_tokens token)
 				return;
 			}
 		}
-		jobid=atoi(token.argv[1]+sizeof(char));
+		jobid=atoi(token.argv[1]+sizeof(char));//+sizeof(char) because given JobId has % at start. So moving pointer to index 1
 		related_job=find_job_with_jid(jobid);
 		if(related_job==NULL)
 		{
@@ -440,7 +464,7 @@ void runJob_foregrnd(struct cmdline_tokens token)
 				return;
 			}
 		}
-		jobid=atoi(token.argv[1]+sizeof(char));
+		jobid=atoi(token.argv[1]+sizeof(char));//as argv[1] has leading % in case of given JobId. So pointign to index 1 using +sizeof(char)
 		related_job=find_job_with_jid(jobid);
 		if(related_job==NULL)
 		{
