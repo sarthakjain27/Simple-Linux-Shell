@@ -1,14 +1,34 @@
-#####################################################################
-# CS:APP Shell Lab
-#
-# Student Source Files
-######################################################################
 
 This directory contains the files you will need for the CS:APP Shell
 Lab.
 
 tsh.c
-        This is the file you will be modifying and handing in.
+        This is the file you will be modifying.
+
+The main functions in the tsh.c file are:
+
+1. eval: Main routine that parses, interprets, and executes the command line. 
+
+2. sigchld handler: Handles SIGCHLD signals. 
+
+3. sigint handler: Handles SIGINT signals (sent by Ctrl-C). 
+
+4. sigtstp handler: Handles SIGTSTP signals (sent by Ctrl-Z). 
+
+This shell program supports the following built-in commands
+
+tsh should support the following built-in commands:
+
+– The quit command terminates the shell.
+– The jobs command lists all background jobs.
+– The bg job command restarts job by sending it a SIGCONT signal, and then runs it in the background. The job argument can be either a PID or a JID.
+– The fg job command restarts job by sending it a SIGCONT signal, and then runs it in the foreground. The job argument can be either a PID or a JID.
+
+When you wish to test your shell, type make to recompile it. To run it, type tsh to the command line:
+linux> ./tsh
+tsh> [type commands to your shell here]
+
+
 
 #########################################
 # You shouldn't modify any of these files
